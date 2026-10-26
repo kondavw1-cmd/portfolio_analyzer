@@ -1,3 +1,13 @@
+import warnings
+
+# Suppress all inplace keyword deprecation warnings globally across external libraries like yfinance
+warnings.filterwarnings(
+    "ignore", category=Warning, message=".*inplace keyword.*"
+)  # wait, change "action" to "ignore"
+warnings.filterwarnings(
+    "ignore", category=Warning, message=".*inplace keyword.*"
+)
+
 import logging
 import os
 import shutil
@@ -23,6 +33,10 @@ from src.trading.tradebook import (
     process_closed_tradebook,
     process_open_partial_tradebook,
 )
+from src.utils.database import (
+    load_dataframe_from_db,
+    save_dataframe_to_db,
+)
 from src.utils.helpers import (
     build_universe_750_scores_df,
     enrich_closed_journal_df,
@@ -42,7 +56,7 @@ SCORES_CACHE = os.path.join(CACHE_DIR, "checkpoint_scored_results.csv")
 
 def main():
     logger.info("=== Initializing Modular Portfolio Analyzer & Tradebook Engine ===")
-    
+
     # Create cache directory and verify existence
     os.makedirs(CACHE_DIR, exist_ok=True)
     assert os.path.isdir(CACHE_DIR), f"Cache directory '{CACHE_DIR}' failed to initialize."
@@ -81,9 +95,7 @@ def main():
         # Step 2. Process Metadata & Financial Statements (with Checkpoint)
         # =====================================================================
         if os.path.exists(METADATA_CACHE):
-            logger.info(
-                "[Checkpoint] Loading metadata and financial statements from cache..."
-            )
+            logger.info("[Checkpoint] Loading metadata and financial statements from cache...")
             meta_cache_df = pd.read_pickle(METADATA_CACHE)
             valid_tickers = meta_cache_df["valid_tickers"].iloc[0]
             stock_sector_map = meta_cache_df["stock_sector_map"].iloc[0]
@@ -117,9 +129,7 @@ def main():
             n500_actual_return_annual = ret_cache_df[
                 "n500_actual_return_annual"
             ].iloc[0]
-            sector_returns_matrix = ret_cache_df["sector_returns_matrix"].iloc[
-                0
-            ]
+            sector_returns_matrix = ret_cache_df["sector_returns_matrix"].iloc[0]
         else:
             logger.info("Downloading historical data and computing returns matrix...")
             (
@@ -185,7 +195,7 @@ def main():
         if os.path.exists(tradebook_path):
             logger.info(f"Processing tradebook data from {tradebook_path}...")
             raw_closed_journal = process_closed_tradebook(
-                csv_filepath=tradebook_path, segment="intraday", exchange="NSE"
+                csv_filepath=tradebook_path, segment="delivery", exchange="NSE"
             )
             if raw_closed_journal is not None and not raw_closed_journal.empty:
                 symbol_col = (
@@ -244,14 +254,32 @@ def main():
         ]
 
         # =====================================================================
-        # Step 8. Export to Multi-Tab Excel Report
+        # Step 8. Save DataFrames to SQLite Database
+        # =====================================================================
+        logger.info("Persisting processed dataframes to SQLite database...")
+        save_dataframe_to_db(universe_750_df, "universe_750_scores")
+        save_dataframe_to_db(df_scored_results, "python_750_computed_scores")
+        save_dataframe_to_db(open_journal_df, "open_partial_journal")
+        save_dataframe_to_db(closed_journal_df, "closed_journal")
+
+        # =====================================================================
+        # Step 9. Read Data From SQLite Database for Export
+        # =====================================================================
+        logger.info("Reading data back from SQLite database for Excel export...")
+        db_universe_df = load_dataframe_from_db("universe_750_scores")
+        db_scored_df = load_dataframe_from_db("python_750_computed_scores")
+        db_open_df = load_dataframe_from_db("open_partial_journal")
+        db_closed_df = load_dataframe_from_db("closed_journal")
+
+        # =====================================================================
+        # Step 10. Export Data Read from DB to Multi-Tab Excel Report
         # =====================================================================
         export_to_excel_direct(
             output_path=OUTPUT_EXCEL_FILE,
-            df_scored_results=df_scored_results,
-            universe_750_df=universe_750_df,
-            open_journal_df=open_journal_df,
-            closed_journal_df=closed_journal_df,
+            df_scored_results=db_scored_df,
+            universe_750_df=db_universe_df,
+            open_journal_df=db_open_df,
+            closed_journal_df=db_closed_df,
         )
 
         logger.info("=== Execution Complete Successfully ===")
