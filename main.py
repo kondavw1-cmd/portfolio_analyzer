@@ -1,13 +1,4 @@
-import warnings
-
-# Suppress all inplace keyword deprecation warnings globally across external libraries like yfinance
-warnings.filterwarnings(
-    "ignore", category=Warning, message=".*inplace keyword.*"
-)  # wait, change "action" to "ignore"
-warnings.filterwarnings(
-    "ignore", category=Warning, message=".*inplace keyword.*"
-)
-
+import datetime
 import logging
 import os
 import shutil
@@ -15,6 +6,7 @@ import pandas as pd
 
 from config.settings import (
     ALLOCATION_PCT,
+    CURRENT_RUN_DATE,
     OUTPUT_EXCEL_FILE,
     TEMP_AVG_COST_OF_750_STOCKS,
     TEMP_ENTRY_DATE,
@@ -55,7 +47,7 @@ SCORES_CACHE = os.path.join(CACHE_DIR, "checkpoint_scored_results.csv")
 
 
 def main():
-    logger.info("=== Initializing Modular Portfolio Analyzer & Tradebook Engine ===")
+    logger.info(f"=== Initializing Portfolio Analyzer Engine for Run Date: {CURRENT_RUN_DATE} ===")
 
     # Create cache directory and verify existence
     os.makedirs(CACHE_DIR, exist_ok=True)
@@ -75,10 +67,7 @@ def main():
             logger.info("Fetching Nifty 750 universe from live sources...")
             raw_tickers, ticker_to_board_map = fetch_nifty_750_universe()
             raw_tickers = list(dict.fromkeys(raw_tickers)) + [
-                "MANINDS.NS",
-                "MANINDS.NS",
-                "SSWL.NS",
-                "TFCILTD.NS",
+                "MANINDS.NS", "MANINDS.NS", "SSWL.NS", "TFCILTD.NS", "NELCO.NS",  "UNIPARTS.NS",  "IRISDOREME.NS",  "IOLCP.NS",  "RISHABH.NS",  "DEEPINDS.NS",  "SHANTIGEAR.NS",  "ANTELOPUS.NS",  "SEAMECLTD.NS"
             ]
             pd.to_pickle(
                 pd.DataFrame(

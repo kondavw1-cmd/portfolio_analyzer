@@ -13,16 +13,16 @@ logging.basicConfig(
 
 logger = logging.getLogger("PortfolioEngine")
 
+CURRENT_RUN_DATE = datetime.date.today().strftime("%Y-%m-%d")
+
+OUTPUT_EXCEL_FILE = os.path.join(
+    "data", f"Portfolio_Analysis_Master_{CURRENT_RUN_DATE}.xlsx"
+)
 BENCHMARK_TICKER = "^CRSLDX"  # Nifty 500 Index
 RISK_FREE_RATE_ANNUAL = 0.065  # 6.5% Annual Risk-Free Rate India Baseline
 CHUNK_SIZE = 50  # Optimal chunk size to avoid yfinance timeouts
 TOTAL_CAPITAL = 150000.0
 ALLOCATION_PCT = 0.065
-
-OUTPUT_EXCEL_FILE = os.path.join(
-    "data",
-    f"Portfolio_Analysis_Master_{datetime.datetime.now().strftime('%Y-%m-%d')}.xlsx",
-)
 
 # Mapping of standard sectors to their respective NSE Sectoral Index Symbols
 SECTOR_INDEX_MAP = {
